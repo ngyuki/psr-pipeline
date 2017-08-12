@@ -1,11 +1,12 @@
 <?php
 namespace ngyuki\PsrPipeline;
 
+use Interop\Http\ServerMiddleware\DelegateInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Interop\Http\ServerMiddleware\MiddlewareInterface;
 use InvalidArgumentException;
 
-class Pipeline
+class Pipeline implements MiddlewareInterface
 {
     private $pipeline = [];
 
@@ -20,14 +21,17 @@ class Pipeline
         }
     }
 
-    public function run(ServerRequestInterface $request)
+    public function process(ServerRequestInterface $request, DelegateInterface $delegate)
     {
-        $next = new FinalHandler();
-
         foreach (array_reverse($this->pipeline) as $handler) {
-            $next = new Next($handler, $next);
+            $delegate = new Next($handler, $delegate);
         }
 
-        return $next->process($request);
+        return $delegate->process($request);
+    }
+
+    public function run(ServerRequestInterface $request)
+    {
+        return $this->process($request, new FinalHandler());
     }
 }

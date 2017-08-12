@@ -41,4 +41,49 @@ class PipelineTest extends TestCase
 
         $this->assertEquals('ABCcba', $response->getBody()->getContents());
     }
+
+    /**
+     * @test
+     */
+    public function pipeline_chain()
+    {
+        $create = function ($name){
+            return function (ServerRequestInterface $request, DelegateInterface $delegate) use ($name) {
+                $request = $request->withAttribute('val', $request->getAttribute('val') . $name);
+                return $delegate->process($request);
+            };
+        };
+
+        $pipeline = new Pipeline();
+
+        $pipeline->pipe($create('A'));
+
+        // ミドルウェアの中でパイプラインを生成してチェイン
+        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) use ($create) {
+            $pipeline = new Pipeline();
+            $pipeline->pipe($create('B'));
+            $pipeline->pipe($create('C'));
+            return $pipeline->process($request, $delegate);
+        });
+
+        // パイプラインをミドルウェアとして追加
+        $pipeline->pipe((function () use ($create) {
+            $pipeline = new Pipeline();
+            $pipeline->pipe($create('D'));
+            $pipeline->pipe($create('E'));
+            return $pipeline;
+        })());
+
+        $pipeline->pipe($create('F'));
+
+        /** @noinspection PhpUnusedParameterInspection */
+        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
+            return new TextResponse($request->getAttribute('val'));
+        });
+
+        $request = ServerRequestFactory::fromGlobals();
+        $response = $pipeline->run($request);
+
+        $this->assertEquals('ABCDEF', $response->getBody()->getContents());
+    }
 }
