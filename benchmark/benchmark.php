@@ -48,9 +48,46 @@ function my_pipeline(ServerRequestInterface $request)
     return $pipeline->run($request);
 }
 
+function stratigility_with_path(ServerRequestInterface $request)
+{
+    $pipeline = new MiddlewarePipe();
+
+    for ($i = 0; $i < 100; $i++) {
+        $pipeline->pipe('/aaa', function (ServerRequestInterface $request, DelegateInterface $delegate) {
+            return $delegate->process($request);
+        });
+    }
+
+    /** @noinspection PhpUnusedParameterInspection */
+    $pipeline->pipe('/aaa', function (ServerRequestInterface $request, DelegateInterface $delegate) {
+        return new TextResponse('x');
+    });
+
+    return $pipeline($request, new Response(), new NoopFinalHandler());
+}
+
+function my_pipeline_with_path(ServerRequestInterface $request)
+{
+    $pipeline = new Pipeline();
+
+    for ($i = 0; $i < 100; $i++) {
+        $pipeline->pipe('/aaa', function (ServerRequestInterface $request, DelegateInterface $delegate) {
+            return $delegate->process($request);
+        });
+    }
+
+    /** @noinspection PhpUnusedParameterInspection */
+    $pipeline->pipe('/aaa', function (ServerRequestInterface $request, DelegateInterface $delegate) {
+        return new TextResponse('x');
+    });
+
+    return $pipeline->run($request);
+}
+
 function benchmark($func)
 {
     $request = ServerRequestFactory::fromGlobals();
+    $request = $request->withUri($request->getUri()->withPath('/aaa'));
 
     $func($request);
 
@@ -60,7 +97,7 @@ function benchmark($func)
         $func($request);
     }
 
-    printf("%-16s: %d #/sec\n", $func, $i / 3);
+    printf("%-24s: %d #/sec\n", $func, $i / 3);
 }
 
 function main()
@@ -76,12 +113,9 @@ function main()
     }
     benchmark('stratigility');
     benchmark('my_pipeline');
+    benchmark('stratigility_with_path');
+    benchmark('my_pipeline_with_path');
 }
-
-/*
- * stratigility    : 1947 #/sec
- * my_pipeline     : 8602 #/sec
- */
 
 if (!debug_backtrace(false)) {
     main();
