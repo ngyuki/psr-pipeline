@@ -13,11 +13,11 @@ class PathSpecificMiddleware implements MiddlewareInterface
     private $path;
 
     /**
-     * @var callable
+     * @var MiddlewareInterface
      */
     private $middleware;
 
-    public function __construct($path, $middleware)
+    public function __construct($path, MiddlewareInterface $middleware)
     {
         $this->path = rtrim($path, '/');
         $this->middleware = $middleware;
@@ -34,12 +34,13 @@ class PathSpecificMiddleware implements MiddlewareInterface
             return $delegate->process($request);
         }
 
-        $pipeline = new Pipeline();
-        $pipeline->pipe($this->middleware);
-        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) use ($origPath) {
-            $request = $request->withUri($request->getUri()->withPath($origPath));
-            return $delegate->process($request);
-        });
+        $delegate = new Next(new CallableMiddleware(
+            function(ServerRequestInterface $request, DelegateInterface $delegate) use ($origPath) {
+                $request = $request->withUri($request->getUri()->withPath($origPath));
+                return $delegate->process($request);
+            }),
+            $delegate
+        );
 
         $newPath = substr($origPath, strlen($this->path));
         if ($newPath === '') {
@@ -47,6 +48,6 @@ class PathSpecificMiddleware implements MiddlewareInterface
         }
         $request = $request->withUri($request->getUri()->withPath($newPath));
 
-        return $pipeline->process($request, $delegate);
+        return $this->middleware->process($request, $delegate);
     }
 }

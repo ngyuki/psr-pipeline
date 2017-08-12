@@ -12,19 +12,24 @@ class Pipeline implements MiddlewareInterface
 
     public function pipe($path, $middleware = null)
     {
-        if ($middleware) {
-            $middleware = new PathSpecificMiddleware($path, $middleware);
-        } else {
+        if ($middleware === null) {
             $middleware = $path;
+            $path = null;
         }
 
         if ($middleware instanceof MiddlewareInterface) {
-            $this->pipeline[] = $middleware;
+            ;
         } elseif (is_callable($middleware)) {
-            $this->pipeline[] = new CallableMiddleware($middleware);
+            $middleware = new CallableMiddleware($middleware);
         } else {
             throw new InvalidArgumentException("Invalid middleware type");
         }
+
+        if ($path !== null) {
+            $middleware = new PathSpecificMiddleware($path, $middleware);
+        }
+
+        $this->pipeline[] = $middleware;
     }
 
     public function process(ServerRequestInterface $request, DelegateInterface $delegate)

@@ -9,7 +9,6 @@ use Zend\Diactoros\ServerRequest;
 use Zend\Diactoros\Response;
 
 use ngyuki\PsrPipeline\Pipeline;
-use ngyuki\PsrPipeline\PathSpecificMiddleware;
 
 class PathSpecificMiddlewareTest extends TestCase
 {
@@ -35,8 +34,8 @@ class PathSpecificMiddlewareTest extends TestCase
 
         $pipeline->pipe($create('top'));
 
-        $pipeline->pipe(new PathSpecificMiddleware('/aaa', $create('aaa')));
-        $pipeline->pipe(new PathSpecificMiddleware('/aaa/bbb', $create('aaa:bbb')));
+        $pipeline->pipe('/aaa', $create('aaa'));
+        $pipeline->pipe('/aaa/bbb', $create('aaa:bbb'));
         $pipeline->pipe($create('end'));
 
         /** @noinspection PhpUnusedParameterInspection */
