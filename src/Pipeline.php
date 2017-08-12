@@ -10,8 +10,14 @@ class Pipeline implements MiddlewareInterface
 {
     private $pipeline = [];
 
-    public function pipe($middleware)
+    public function pipe($path, $middleware = null)
     {
+        if ($middleware) {
+            $middleware = new PathSpecificMiddleware($path, $middleware);
+        } else {
+            $middleware = $path;
+        }
+
         if ($middleware instanceof MiddlewareInterface) {
             $this->pipeline[] = $middleware;
         } elseif (is_callable($middleware)) {
