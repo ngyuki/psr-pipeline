@@ -1,15 +1,10 @@
 {
-    "config": {
-        "platform": {
-            "php": "7.0.10"
-        }
-    },
     "require": {
-        "http-interop/http-middleware": "^0.4.1"
+        "php": "^7.4"
     },
     "require-dev": {
-        "zendframework/zend-diactoros": "^1.4",
-        "zendframework/zend-stratigility": "^2.0"
+        "laminas/laminas-diactoros": "^2.2",
+        "laminas/laminas-stratigility": "^3.2"
     },
     "autoload": {
         "psr-4": {

@@ -1,23 +1,25 @@
 <?php
 namespace ngyuki\PsrPipeline;
 
-use Interop\Http\ServerMiddleware\DelegateInterface;
-use Interop\Http\ServerMiddleware\MiddlewareInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
-class Next implements DelegateInterface
+class Next implements RequestHandlerInterface
 {
-    private $middleware;
-    private $delegate;
+    private MiddlewareInterface $middleware;
 
-    public function __construct(MiddlewareInterface $middleware, DelegateInterface $delegate)
+    private RequestHandlerInterface $handler;
+
+    public function __construct(MiddlewareInterface $middleware, RequestHandlerInterface $handler)
     {
         $this->middleware = $middleware;
-        $this->delegate = $delegate;
+        $this->handler = $handler;
     }
 
-    public function process(ServerRequestInterface $request)
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        return $this->middleware->process($request, $this->delegate);
+        return $this->middleware->process($request, $this->handler);
     }
 }

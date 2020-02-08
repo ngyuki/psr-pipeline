@@ -1,14 +1,13 @@
-<?php
+<?php /** @noinspection PhpUnusedParameterInspection */
+
 namespace ngyuki\PsrPipelineTests;
 
-use PHPUnit\Framework\TestCase;
-
-use Interop\Http\ServerMiddleware\DelegateInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Zend\Diactoros\ServerRequest;
-use Zend\Diactoros\Response;
-
+use Laminas\Diactoros\Response;
+use Laminas\Diactoros\ServerRequest;
 use ngyuki\PsrPipeline\Pipeline;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 class PathSpecificMiddlewareTest extends TestCase
 {
@@ -24,9 +23,9 @@ class PathSpecificMiddlewareTest extends TestCase
         $paths = [];
 
         $create = function ($name) use (&$paths) {
-            return function (ServerRequestInterface $request, DelegateInterface $delegate) use ($name, &$paths) {
+            return function (ServerRequestInterface $request, RequestHandlerInterface $handler) use ($name, &$paths) {
                 $paths[] = [$name, $request->getUri()->getPath()];
-                return $delegate->process($request);
+                return $handler->handle($request);
             };
         };
 
@@ -34,17 +33,16 @@ class PathSpecificMiddlewareTest extends TestCase
 
         $pipeline->pipe($create('top'));
 
-        $pipeline->pipe('/aaa', $create('aaa'));
-        $pipeline->pipe('/aaa/bbb', $create('aaa:bbb'));
+        $pipeline->path('/aaa', $create('aaa'));
+        $pipeline->path('/aaa/bbb', $create('aaa:bbb'));
         $pipeline->pipe($create('end'));
 
-        /** @noinspection PhpUnusedParameterInspection */
-        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
+        $pipeline->pipe(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
             return new Response();
         });
 
         $request = new ServerRequest([], [], $path, 'GET');
-        $pipeline->run($request);
+        $pipeline->handle($request);
         $this->assertEquals($expected, $paths);
     }
 

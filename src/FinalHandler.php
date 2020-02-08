@@ -1,13 +1,14 @@
 <?php
 namespace ngyuki\PsrPipeline;
 
-use Interop\Http\ServerMiddleware\DelegateInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use LogicException;
+use Psr\Http\Server\RequestHandlerInterface;
 
-class FinalHandler implements DelegateInterface
+class FinalHandler implements RequestHandlerInterface
 {
-    public function process(ServerRequestInterface $request)
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
         throw new LogicException("Middleware was not return Response object");
     }

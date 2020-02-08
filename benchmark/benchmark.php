@@ -1,33 +1,34 @@
 <?php
+/** @noinspection PhpUnused */
+/** @noinspection PhpUnusedParameterInspection */
+
 require __DIR__ . '/../vendor/autoload.php';
 
-use Interop\Http\ServerMiddleware\DelegateInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Zend\Diactoros\Response;
-use Zend\Diactoros\Response\TextResponse;
-use Zend\Diactoros\ServerRequestFactory;
-
-use Zend\Stratigility\MiddlewarePipe;
-use Zend\Stratigility\NoopFinalHandler;
-
+use Laminas\Diactoros\Response\TextResponse;
+use Laminas\Diactoros\ServerRequestFactory;
+use Laminas\Stratigility\MiddlewarePipe;
 use ngyuki\PsrPipeline\Pipeline;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use function Laminas\Stratigility\middleware;
+use function Laminas\Stratigility\path;
+
 
 function stratigility(ServerRequestInterface $request)
 {
     $pipeline = new MiddlewarePipe();
 
     for ($i = 0; $i < 100; $i++) {
-        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
-            return $delegate->process($request);
-        });
+        $pipeline->pipe(middleware(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
+            return $handler->handle($request);
+        }));
     }
 
-    /** @noinspection PhpUnusedParameterInspection */
-    $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
+    $pipeline->pipe(middleware(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
         return new TextResponse('x');
-    });
+    }));
 
-    return $pipeline($request, new Response(), new NoopFinalHandler());
+    return $pipeline->handle($request);
 }
 
 function my_pipeline(ServerRequestInterface $request)
@@ -35,17 +36,16 @@ function my_pipeline(ServerRequestInterface $request)
     $pipeline = new Pipeline();
 
     for ($i = 0; $i < 100; $i++) {
-        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
-            return $delegate->process($request);
+        $pipeline->pipe(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
+            return $handler->handle($request);
         });
     }
 
-    /** @noinspection PhpUnusedParameterInspection */
-    $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
+    $pipeline->pipe(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
         return new TextResponse('x');
     });
 
-    return $pipeline->run($request);
+    return $pipeline->handle($request);
 }
 
 function stratigility_with_path(ServerRequestInterface $request)
@@ -53,17 +53,16 @@ function stratigility_with_path(ServerRequestInterface $request)
     $pipeline = new MiddlewarePipe();
 
     for ($i = 0; $i < 100; $i++) {
-        $pipeline->pipe('/aaa', function (ServerRequestInterface $request, DelegateInterface $delegate) {
-            return $delegate->process($request);
-        });
+        $pipeline->pipe(path('/aaa', middleware((function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
+            return $handler->handle($request);
+        }))));
     }
 
-    /** @noinspection PhpUnusedParameterInspection */
-    $pipeline->pipe('/aaa', function (ServerRequestInterface $request, DelegateInterface $delegate) {
+    $pipeline->pipe(path('/aaa', middleware((function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
         return new TextResponse('x');
-    });
+    }))));
 
-    return $pipeline($request, new Response(), new NoopFinalHandler());
+    return $pipeline->handle($request);
 }
 
 function my_pipeline_with_path(ServerRequestInterface $request)
@@ -71,17 +70,16 @@ function my_pipeline_with_path(ServerRequestInterface $request)
     $pipeline = new Pipeline();
 
     for ($i = 0; $i < 100; $i++) {
-        $pipeline->pipe('/aaa', function (ServerRequestInterface $request, DelegateInterface $delegate) {
-            return $delegate->process($request);
+        $pipeline->path('/aaa', function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
+            return $handler->handle($request);
         });
     }
 
-    /** @noinspection PhpUnusedParameterInspection */
-    $pipeline->pipe('/aaa', function (ServerRequestInterface $request, DelegateInterface $delegate) {
+    $pipeline->path('/aaa', function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
         return new TextResponse('x');
     });
 
-    return $pipeline->run($request);
+    return $pipeline->handle($request);
 }
 
 function benchmark($func)

@@ -1,21 +1,16 @@
 <?php
 namespace ngyuki\PsrPipeline;
 
-use Interop\Http\ServerMiddleware\DelegateInterface;
-use Interop\Http\ServerMiddleware\MiddlewareInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 class PathSpecificMiddleware implements MiddlewareInterface
 {
-    /**
-     * @var string
-     */
-    private $path;
+    private string $path;
 
-    /**
-     * @var MiddlewareInterface
-     */
-    private $middleware;
+    private MiddlewareInterface $middleware;
 
     public function __construct($path, MiddlewareInterface $middleware)
     {
@@ -23,7 +18,7 @@ class PathSpecificMiddleware implements MiddlewareInterface
         $this->middleware = $middleware;
     }
 
-    public function process(ServerRequestInterface $request, DelegateInterface $delegate)
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $origPath = $request->getUri()->getPath();
 
@@ -31,15 +26,15 @@ class PathSpecificMiddleware implements MiddlewareInterface
             ($this->path !== $origPath) &&
             (strncmp($origPath, $this->path . '/', strlen($this->path) + 1) !== 0)
         ) {
-            return $delegate->process($request);
+            return $handler->handle($request);
         }
 
-        $delegate = new Next(new CallableMiddleware(
-            function(ServerRequestInterface $request, DelegateInterface $delegate) use ($origPath) {
+        $handler = new Next(new CallableMiddleware(
+            function(ServerRequestInterface $request, RequestHandlerInterface $handler) use ($origPath) {
                 $request = $request->withUri($request->getUri()->withPath($origPath));
-                return $delegate->process($request);
+                return $handler->handle($request);
             }),
-            $delegate
+            $handler
         );
 
         $newPath = substr($origPath, strlen($this->path));
@@ -48,6 +43,6 @@ class PathSpecificMiddleware implements MiddlewareInterface
         }
         $request = $request->withUri($request->getUri()->withPath($newPath));
 
-        return $this->middleware->process($request, $delegate);
+        return $this->middleware->process($request, $handler);
     }
 }

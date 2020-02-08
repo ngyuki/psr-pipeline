@@ -1,14 +1,13 @@
-<?php
+<?php /** @noinspection PhpUnusedParameterInspection */
+
 namespace ngyuki\PsrPipelineTests;
 
-use PHPUnit\Framework\TestCase;
-
-use Psr\Http\Message\ServerRequestInterface;
-use Interop\Http\ServerMiddleware\DelegateInterface;
-use Zend\Diactoros\ServerRequestFactory;
-use Zend\Diactoros\Response\TextResponse;
-
+use Laminas\Diactoros\Response\TextResponse;
+use Laminas\Diactoros\ServerRequestFactory;
 use ngyuki\PsrPipeline\Pipeline;
+use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 class PipelineTest extends TestCase
 {
@@ -16,20 +15,19 @@ class PipelineTest extends TestCase
     {
         $pipeline = new Pipeline();
 
-        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
+        $pipeline->pipe(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
             $request = $request->withAttribute('val', $request->getAttribute('val') . 'A');
-            $response = $delegate->process($request);
+            $response = $handler->handle($request);
             return new TextResponse($response->getBody()->getContents() . 'a');
         });
 
-        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
+        $pipeline->pipe(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
             $request = $request->withAttribute('val', $request->getAttribute('val') . 'B');
-            $response = $delegate->process($request);
+            $response = $handler->handle($request);
             return new TextResponse($response->getBody()->getContents() . 'b');
         });
 
-        /** @noinspection PhpUnusedParameterInspection */
-        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
+        $pipeline->pipe(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
             $request = $request->withAttribute('val', $request->getAttribute('val') . 'C');
             $val = $request->getAttribute('val');
             $response = new TextResponse($val);
@@ -37,7 +35,7 @@ class PipelineTest extends TestCase
         });
 
         $request = ServerRequestFactory::fromGlobals();
-        $response = $pipeline->run($request);
+        $response = $pipeline->handle($request);
 
         $this->assertEquals('ABCcba', $response->getBody()->getContents());
     }
@@ -48,9 +46,9 @@ class PipelineTest extends TestCase
     public function pipeline_chain()
     {
         $create = function ($name){
-            return function (ServerRequestInterface $request, DelegateInterface $delegate) use ($name) {
+            return function (ServerRequestInterface $request, RequestHandlerInterface $handler) use ($name) {
                 $request = $request->withAttribute('val', $request->getAttribute('val') . $name);
-                return $delegate->process($request);
+                return $handler->handle($request);
             };
         };
 
@@ -59,11 +57,11 @@ class PipelineTest extends TestCase
         $pipeline->pipe($create('A'));
 
         // ミドルウェアの中でパイプラインを生成してチェイン
-        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) use ($create) {
+        $pipeline->pipe(function (ServerRequestInterface $request, RequestHandlerInterface $handler) use ($create) {
             $pipeline = new Pipeline();
             $pipeline->pipe($create('B'));
             $pipeline->pipe($create('C'));
-            return $pipeline->process($request, $delegate);
+            return $pipeline->process($request, $handler);
         });
 
         // パイプラインをミドルウェアとして追加
@@ -76,13 +74,12 @@ class PipelineTest extends TestCase
 
         $pipeline->pipe($create('F'));
 
-        /** @noinspection PhpUnusedParameterInspection */
-        $pipeline->pipe(function (ServerRequestInterface $request, DelegateInterface $delegate) {
+        $pipeline->pipe(function (ServerRequestInterface $request, RequestHandlerInterface $handler) {
             return new TextResponse($request->getAttribute('val'));
         });
 
         $request = ServerRequestFactory::fromGlobals();
-        $response = $pipeline->run($request);
+        $response = $pipeline->handle($request);
 
         $this->assertEquals('ABCDEF', $response->getBody()->getContents());
     }

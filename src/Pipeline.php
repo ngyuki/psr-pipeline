@@ -1,47 +1,51 @@
 <?php
 namespace ngyuki\PsrPipeline;
 
-use Interop\Http\ServerMiddleware\DelegateInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Interop\Http\ServerMiddleware\MiddlewareInterface;
 use InvalidArgumentException;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
-class Pipeline implements MiddlewareInterface
+class Pipeline implements MiddlewareInterface, RequestHandlerInterface
 {
-    private $pipeline = [];
+    private array $pipeline = [];
 
-    public function pipe($path, $middleware = null)
+    public function pipe($middleware)
     {
-        if ($middleware === null) {
-            $middleware = $path;
-            $path = null;
-        }
-
-        if ($middleware instanceof MiddlewareInterface) {
-            ;
-        } elseif (is_callable($middleware)) {
+        if ($middleware instanceof MiddlewareInterface === false) {
+            if (!is_callable($middleware)) {
+                throw new InvalidArgumentException("Invalid middleware type");
+            }
             $middleware = new CallableMiddleware($middleware);
-        } else {
-            throw new InvalidArgumentException("Invalid middleware type");
         }
-
-        if ($path !== null) {
-            $middleware = new PathSpecificMiddleware($path, $middleware);
-        }
-
         $this->pipeline[] = $middleware;
     }
 
-    public function process(ServerRequestInterface $request, DelegateInterface $delegate)
+    public function path(string $path, $middleware)
     {
-        foreach (array_reverse($this->pipeline) as $handler) {
-            $delegate = new Next($handler, $delegate);
+        if ($middleware instanceof MiddlewareInterface === false) {
+            if (!is_callable($middleware)) {
+                throw new InvalidArgumentException("Invalid middleware type");
+            }
+            $middleware = new CallableMiddleware($middleware);
         }
-
-        return $delegate->process($request);
+        $middleware = new PathSpecificMiddleware($path, $middleware);
+        $this->pipeline[] = $middleware;
     }
 
-    public function run(ServerRequestInterface $request)
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        foreach (array_reverse($this->pipeline) as $middleware) {
+            $handler = new Next($middleware, $handler);
+        }
+        return $handler->handle($request);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
         return $this->process($request, new FinalHandler());
     }
