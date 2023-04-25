@@ -12,7 +12,7 @@ class PathSpecificMiddleware implements MiddlewareInterface
 
     private MiddlewareInterface $middleware;
 
-    public function __construct($path, MiddlewareInterface $middleware)
+    public function __construct(string $path, MiddlewareInterface $middleware)
     {
         $this->path = rtrim($path, '/');
         $this->middleware = $middleware;

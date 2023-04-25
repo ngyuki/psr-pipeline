@@ -8,6 +8,9 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class CallableMiddleware implements MiddlewareInterface
 {
+    /**
+     * @var callable
+     */
     private $handler;
 
     public function __construct(callable $handler)
