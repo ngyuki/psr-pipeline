@@ -9,9 +9,15 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 class Pipeline implements MiddlewareInterface, RequestHandlerInterface
 {
+    /**
+     * @var list<MiddlewareInterface>
+     */
     private array $pipeline = [];
 
-    public function pipe($middleware)
+    /**
+     * @param MiddlewareInterface|callable $middleware
+     */
+    public function pipe($middleware): void
     {
         if ($middleware instanceof MiddlewareInterface === false) {
             if (!is_callable($middleware)) {
@@ -22,7 +28,10 @@ class Pipeline implements MiddlewareInterface, RequestHandlerInterface
         $this->pipeline[] = $middleware;
     }
 
-    public function path(string $path, $middleware)
+    /**
+     * @param MiddlewareInterface|callable $middleware
+     */
+    public function path(string $path, $middleware): void
     {
         if ($middleware instanceof MiddlewareInterface === false) {
             if (!is_callable($middleware)) {
